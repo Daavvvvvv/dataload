@@ -44,8 +44,6 @@ public class CsvLoader
             }
         }
 
-        // Simulación de procesamiento pesado (opcional para pruebas)
-        // System.Threading.Thread.Sleep(1000);
 
         return dataTable;
     }

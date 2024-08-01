@@ -40,11 +40,11 @@ public class Program
             }
 
             // Determinar estrategia de carga
-            ILoadStrategy loadStrategy = option switch
+            ILoad loadStrategy = option switch
             {
-                "-s" => new ConcurrentSingleCoreLoadStrategy(),
-                "-m" => new ConcurrentMultiCoreLoadStrategy(),
-                _ => new SequentialLoadStrategy()
+                "-s" => new SingleCoreLoad(),
+                "-m" => new MultiCoreLoad(),
+                _ => new SequentialLoad()
             };
 
             var dataLoader = new DataLoader(folder, loadStrategy);

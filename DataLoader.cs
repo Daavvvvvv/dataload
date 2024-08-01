@@ -8,9 +8,9 @@ public class DataLoader
 {
     private string folderPath;
     private CsvLoader csvLoader;
-    private ILoadStrategy loadStrategy;
+    private ILoad loadStrategy;
 
-    public DataLoader(string folderPath, ILoadStrategy loadStrategy)
+    public DataLoader(string folderPath, ILoad loadStrategy)
     {
         this.folderPath = folderPath;
         this.csvLoader = new CsvLoader();
