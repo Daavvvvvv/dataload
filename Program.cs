@@ -1,78 +1,68 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+using System.Threading.Tasks;
 
-class Program
+public class Program
 {
-    static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
-        if (args.Length < 2 || args[0] != "-f")
+        if (args.Length < 2)
         {
-            Console.WriteLine("Uso: dataload [OPCIONES] -f FOLDER");
+            ShowUsage();
             return;
         }
 
-        string folder = args[1];
-        List<string> csvFiles = GetCsvFiles(folder);
+        string folder = string.Empty;
+        string option = string.Empty;
 
-        foreach (string file in csvFiles)
+        for (int i = 0; i < args.Length; i++)
         {
-            List<List<string>> csvData = ReadCsvFile(file);
-            Console.WriteLine($"Archivo: {Path.GetFileName(file)}");
-            Console.WriteLine($"Filas leídas: {csvData.Count}");
-
-            if (csvData.Count > 0)
+            if (args[i] == "-f" && i + 1 < args.Length)
             {
-                Console.WriteLine($"Columnas: {csvData[0].Count}");
-
-                // Mostrar las primeras 5 filas (o menos si hay menos de 5)
-                int rowsToShow = Math.Min(8, csvData.Count);
-                Console.WriteLine($"Primeras {rowsToShow} filas:");
-                for (int i = 0; i < rowsToShow; i++)
-                {
-                    Console.WriteLine(string.Join(" | ", csvData[i].Take(8))); // Mostrar solo las primeras 5 columnas
-                }
+                folder = args[i + 1];
+                i++; // Saltar el siguiente argumento porque es el valor de la carpeta
             }
-            else
+            else if (args[i] == "-s" || args[i] == "-m")
             {
-                Console.WriteLine("El archivo está vacío.");
+                option = args[i];
             }
-            Console.WriteLine("--------------------");
         }
-    }
 
-    static List<string> GetCsvFiles(string folder)
-    {
-        if (!Directory.Exists(folder))
+        if (string.IsNullOrEmpty(folder))
         {
-            Console.WriteLine($"La carpeta {folder} no existe.");
-            return new List<string>();
+            ShowUsage();
+            return;
         }
-        return Directory.GetFiles(folder, "*.csv").ToList();
-    }
 
-    static List<List<string>> ReadCsvFile(string filePath)
-    {
-        List<List<string>> csvData = new List<List<string>>();
+        var dataLoader = new DataLoader(folder);
 
         try
         {
-            using (StreamReader reader = new StreamReader(filePath))
+            switch (option)
             {
-                string line;
-                while ((line = reader.ReadLine()) != null)
-                {
-                    List<string> row = line.Split(',').Select(field => field.Trim()).ToList();
-                    csvData.Add(row);
-                }
+                case "-s":
+                    await dataLoader.LoadFilesConcurrentSingleCore();
+                    break;
+                case "-m":
+                    dataLoader.LoadFilesConcurrentMultiCore();
+                    break;
+                default:
+                    dataLoader.LoadFilesSequential();
+                    break;
             }
+            Environment.Exit(0);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error al leer el archivo {filePath}: {ex.Message}");
+            Console.WriteLine($"Error: {ex.Message}");
+            Environment.Exit(1);
         }
+    }
 
-        return csvData;
+    private static void ShowUsage()
+    {
+        Console.WriteLine("USO: dataload [OPCIONES] -f FOLDER");
+        Console.WriteLine("OPCIONES:");
+        Console.WriteLine("-s    Lectura concurrente en un solo core");
+        Console.WriteLine("-m    Lectura concurrente en múltiples cores");
     }
 }
