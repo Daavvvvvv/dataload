@@ -26,13 +26,21 @@ public class DataLoader
         var firstFileLoadStartTime = DateTime.Now;
         Console.WriteLine($"Hora de inicio de la carga del primer archivo: {firstFileLoadStartTime:HH:mm:ss}");
 
-        var dataTables = await loadStrategy.LoadFiles(csvFiles, csvLoader);
+        try
+        {
+            var dataTables = await loadStrategy.LoadFiles(csvFiles, csvLoader);
 
-        var lastFileLoadEndTime = DateTime.Now;
-        Console.WriteLine($"Hora de finalización de la carga del último archivo: {lastFileLoadEndTime:HH:mm:ss}");
+            var lastFileLoadEndTime = DateTime.Now;
+            Console.WriteLine($"Hora de finalización de la carga del último archivo: {lastFileLoadEndTime:HH:mm:ss}");
 
-        var totalDuration = lastFileLoadEndTime - startTime;
-        Console.WriteLine($"Tiempo total del proceso: {totalDuration:mm\\:ss}");
+            var totalDuration = lastFileLoadEndTime - startTime;
+            Console.WriteLine($"Tiempo total del proceso: {totalDuration:mm\\:ss}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error durante la carga de archivos: {ex.Message}");
+            throw;
+        }
     }
 
     private List<FileInfo> GetCsvFiles()
