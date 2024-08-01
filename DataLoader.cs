@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 public class DataLoader
 {
@@ -21,20 +22,22 @@ public class DataLoader
     {
         var csvFiles = GetCsvFiles();
         var startTime = DateTime.Now;
-        Console.WriteLine($"Hora de inicio del programa: {startTime:HH:mm:ss}");
+        var stopwatch = Stopwatch.StartNew();
+        Console.WriteLine($"Hora de inicio del programa: {startTime:HH:mm:ss:FFF}");
 
         var firstFileLoadStartTime = DateTime.Now;
-        Console.WriteLine($"Hora de inicio de la carga del primer archivo: {firstFileLoadStartTime:HH:mm:ss}");
+        Console.WriteLine($"Hora de inicio de la carga del primer archivo: {firstFileLoadStartTime:HH:mm:ss:FFF}");
 
         try
         {
             var dataTables = await loadStrategy.LoadFiles(csvFiles, csvLoader);
 
             var lastFileLoadEndTime = DateTime.Now;
-            Console.WriteLine($"Hora de finalización de la carga del último archivo: {lastFileLoadEndTime:HH:mm:ss}");
+            Console.WriteLine($"Hora de finalización de la carga del último archivo: {lastFileLoadEndTime:HH:mm:ss:FFF}");
 
-            var totalDuration = lastFileLoadEndTime - startTime;
-            Console.WriteLine($"Tiempo total del proceso: {totalDuration:mm\\:ss}");
+            stopwatch.Stop();
+            var totalDuration = stopwatch.Elapsed;
+            Console.WriteLine($"Tiempo total del proceso: {totalDuration:mm\\:ss\\:fff}");
         }
         catch (Exception ex)
         {

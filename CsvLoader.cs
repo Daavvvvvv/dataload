@@ -36,7 +36,7 @@ public class CsvLoader
                         }
                         else
                         {
-                            row[i] = DBNull.Value; // Manejar columnas faltantes
+                            row[i] = DBNull.Value; 
                         }
                     }
                     dataTable.Rows.Add(row);
