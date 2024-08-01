@@ -27,28 +27,24 @@ public class Program
             }
         }
 
-        if (string.IsNullOrEmpty(folder))
+        if (string.IsNullOrEmpty(folder) || string.IsNullOrEmpty(option))
         {
             ShowUsage();
             return;
         }
 
-        var dataLoader = new DataLoader(folder);
+        ILoadStrategy loadStrategy = option switch
+        {
+            "-s" => new ConcurrentSingleCoreLoadStrategy(),
+            "-m" => new ConcurrentMultiCoreLoadStrategy(),
+            _ => new SequentialLoadStrategy()
+        };
+
+        var dataLoader = new DataLoader(folder, loadStrategy);
 
         try
         {
-            switch (option)
-            {
-                case "-s":
-                    await dataLoader.LoadFilesConcurrentSingleCore();
-                    break;
-                case "-m":
-                    dataLoader.LoadFilesConcurrentMultiCore();
-                    break;
-                default:
-                    dataLoader.LoadFilesSequential();
-                    break;
-            }
+            await dataLoader.LoadFiles();
             Environment.Exit(0);
         }
         catch (Exception ex)
