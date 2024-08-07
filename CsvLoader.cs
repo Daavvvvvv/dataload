@@ -1,6 +1,4 @@
-﻿using System;
-using System.Data;
-using System.IO;
+﻿using System.Data;
 
 public class CsvLoader
 {
@@ -28,22 +26,19 @@ public class CsvLoader
                 else
                 {
                     var row = dataTable.NewRow();
-                    for (int i = 0; i < dataTable.Columns.Count; i++)
+                    int columnCount = Math.Min(dataTable.Columns.Count, values.Length);
+                    for (int i = 0; i < columnCount; i++)
                     {
-                        if (i < values.Length)
-                        {
-                            row[i] = values[i];
-                        }
-                        else
-                        {
-                            row[i] = DBNull.Value; 
-                        }
+                        row[i] = values[i];
+                    }
+                    for (int i = columnCount; i < dataTable.Columns.Count; i++)
+                    {
+                        row[i] = DBNull.Value;
                     }
                     dataTable.Rows.Add(row);
                 }
             }
         }
-
 
         return dataTable;
     }
