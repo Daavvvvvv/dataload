@@ -1,5 +1,5 @@
-﻿using System; 
-using System.Threading.Tasks; 
+﻿using System;
+using System.Threading.Tasks;
 
 public class Program
 {
@@ -7,24 +7,22 @@ public class Program
     {
         try
         {
-            // Validar argumentos: se necesita al menos -f FOLDER, y opcionalmente -s o -m
-            if (args.Length < 2 && !(args.Length == 2 && args[0] == "-f"))
+            if (args.Length < 2 || (args.Length == 2 && args[0] != "-f"))
             {
                 ShowUsage();
-                Environment.Exit(0);
+                Environment.Exit(1);
                 return;
             }
 
             string folder = string.Empty;
             string option = string.Empty;
 
-            // Procesar argumentos
             for (int i = 0; i < args.Length; i++)
             {
                 if (args[i] == "-f" && i + 1 < args.Length)
                 {
                     folder = args[i + 1];
-                    i++; // Saltar el siguiente argumento porque es el valor de la carpeta
+                    i++;
                 }
                 else if (args[i] == "-s" || args[i] == "-m")
                 {
@@ -39,13 +37,19 @@ public class Program
                 return;
             }
 
-            // Determinar estrategia de carga
-            ILoad loadStrategy = option switch
+            ILoad loadStrategy;
+            switch (option)
             {
-                "-s" => new SingleCoreLoad(),
-                "-m" => new MultiCoreLoad(),
-                _ => new SequentialLoad()
-            };
+                case "-s":
+                    loadStrategy = new SingleCoreLoad();
+                    break;
+                case "-m":
+                    loadStrategy = new MultiCoreLoad();
+                    break;
+                default:
+                    loadStrategy = new SequentialLoad();
+                    break;
+            }
 
             var dataLoader = new DataLoader(folder, loadStrategy);
 

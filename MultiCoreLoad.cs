@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Data;
-using System.IO;
-using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 public class MultiCoreLoad : ILoad
 {
@@ -13,7 +11,7 @@ public class MultiCoreLoad : ILoad
 
         await Task.Run(() =>
         {
-            Parallel.ForEach(csvFiles, file =>
+            Parallel.ForEach(csvFiles, async file =>
             {
                 var loadStart = Stopwatch.StartNew();
                 var dataTable = loader.LoadCsv(file);
@@ -25,6 +23,7 @@ public class MultiCoreLoad : ILoad
                 Console.WriteLine($"Archivo {file.Name} cargado en {loadStart.ElapsedMilliseconds} ms");
             });
         });
+
         return dataTables;
     }
 }
