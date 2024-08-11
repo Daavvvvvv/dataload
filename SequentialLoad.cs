@@ -16,7 +16,7 @@ public class SequentialLoad : ILoad
             var dataTable = await Task.Run(() => loader.LoadCsv(file));
             dataTables.Add(dataTable);
             loadStart.Stop();
-            Console.WriteLine($"Archivo {file.Name} cargado en {loadStart.ElapsedMilliseconds} ms");
+            Console.WriteLine($"Archivo {file.Name} cargado en {loadStart.ElapsedMilliseconds} ms por núcleo {Thread.GetCurrentProcessorId()}");
         }
         return dataTables;
     }

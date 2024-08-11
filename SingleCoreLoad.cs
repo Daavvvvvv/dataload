@@ -12,7 +12,7 @@ public class SingleCoreLoad : ILoad
     static extern IntPtr GetCurrentThread();
 
     [DllImport("kernel32.dll")]
-    static extern bool SetThreadAffinityMask(IntPtr hThread, IntPtr dwThreadAffinityMask);
+    static extern IntPtr SetThreadAffinityMask(IntPtr hThread, IntPtr dwThreadAffinityMask);
 
     public async Task<List<DataTable>> LoadFiles(List<FileInfo> csvFiles, CsvLoader loader)
     {
@@ -23,24 +23,25 @@ public class SingleCoreLoad : ILoad
         {
             tasks.Add(Task.Run(() =>
             {
-                var originalAffinity = Process.GetCurrentProcess().ProcessorAffinity;
-                SetThreadAffinityMask(GetCurrentThread(), new IntPtr(1));
+                var threadHandle = GetCurrentThread();
+                var originalAffinity = SetThreadAffinityMask(threadHandle, new IntPtr(2));
 
                 try
                 {
                     var loadStart = Stopwatch.StartNew();
                     var dataTable = loader.LoadCsv(file);
                     loadStart.Stop();
+
                     lock (dataTables)
                     {
                         dataTables.Add(dataTable);
                     }
-                    Console.WriteLine($"Archivo {file.Name} cargado en {loadStart.ElapsedMilliseconds} ms");
+
+                    Console.WriteLine($"Archivo {file.Name} cargado en {loadStart.ElapsedMilliseconds} ms por núcleo {Thread.GetCurrentProcessorId()}");
                 }
                 finally
                 {
-                    // Restore the original processor affinity
-                    Process.GetCurrentProcess().ProcessorAffinity = originalAffinity;
+                    SetThreadAffinityMask(threadHandle, originalAffinity);
                 }
             }));
         }
