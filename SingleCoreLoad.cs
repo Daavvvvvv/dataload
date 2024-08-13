@@ -24,7 +24,7 @@ public class SingleCoreLoad : ILoad
             tasks.Add(Task.Run(() =>
             {
                 var threadHandle = GetCurrentThread();
-                var originalAffinity = SetThreadAffinityMask(threadHandle, new IntPtr(2));
+                var originalAffinity = SetThreadAffinityMask(threadHandle, new IntPtr(4096));
 
                 try
                 {

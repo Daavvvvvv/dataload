@@ -10,12 +10,8 @@ public class MultiCoreLoad : ILoad
         var dataTables = new List<DataTable>();
         Parallel.ForEach(csvFiles, file =>
         {
-            
             var loadStart = Stopwatch.StartNew();
-
-
             var dataTable = loader.LoadCsv(file);
-
 
             lock (dataTables)
             {
@@ -23,12 +19,7 @@ public class MultiCoreLoad : ILoad
             }
 
             loadStart.Stop();
-
-
             Console.WriteLine($"Archivo {file.Name} cargado en {loadStart.ElapsedMilliseconds} ms por núcleo {Thread.GetCurrentProcessorId()}");
-
-
-            
         });
 
         return Task.FromResult(dataTables);
