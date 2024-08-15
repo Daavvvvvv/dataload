@@ -19,7 +19,9 @@ public class MultiCoreLoad : ILoad
             }
 
             loadStart.Stop();
+
             Console.WriteLine($"Archivo {file.Name} cargado en {loadStart.ElapsedMilliseconds} ms por núcleo {Thread.GetCurrentProcessorId()}");
+
         });
 
         return Task.FromResult(dataTables);

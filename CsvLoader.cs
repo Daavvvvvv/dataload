@@ -6,40 +6,72 @@ public class CsvLoader
     {
         var dataTable = new DataTable(file.Name);
 
-        using (var reader = new StreamReader(file.FullName))
+        using (var fileStream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read))
+        using (var reader = new StreamReader(fileStream))
         {
             bool isFirstRow = true;
+            char[] buffer = new char[4096]; // 4KB buffer
+            string remainder = string.Empty;
 
             while (!reader.EndOfStream)
             {
-                var line = reader.ReadLine();
-                var values = line.Split(',');
+                int charsRead = reader.Read(buffer, 0, buffer.Length);
+                string chunk = remainder + new string(buffer, 0, charsRead);
+                var lines = chunk.Split(new[] { '\n' }, StringSplitOptions.None);
 
-                if (isFirstRow)
+                for (int i = 0; i < lines.Length - 1; i++) // Process all complete lines
                 {
-                    foreach (var column in values)
+                    var line = lines[i].Trim();
+                    if (string.IsNullOrEmpty(line)) continue;
+
+                    var values = line.Split(',');
+
+                    if (isFirstRow)
                     {
-                        dataTable.Columns.Add(column);
+                        foreach (var column in values)
+                        {
+                            dataTable.Columns.Add(column);
+                        }
+                        isFirstRow = false;
                     }
-                    isFirstRow = false;
+                    else
+                    {
+                        var row = dataTable.NewRow();
+                        int columnCount = Math.Min(dataTable.Columns.Count, values.Length);
+                        for (int j = 0; j < columnCount; j++)
+                        {
+                            row[j] = values[j];
+                        }
+                        for (int j = columnCount; j < dataTable.Columns.Count; j++)
+                        {
+                            row[j] = DBNull.Value;
+                        }
+                        dataTable.Rows.Add(row);
+                    }
                 }
-                else
+
+                remainder = lines[^1]; // Last line might be incomplete, save it for the next chunk
+            }
+
+            // Process any remaining line
+            if (!string.IsNullOrEmpty(remainder))
+            {
+                var values = remainder.Trim().Split(',');
+                var row = dataTable.NewRow();
+                int columnCount = Math.Min(dataTable.Columns.Count, values.Length);
+                for (int j = 0; j < columnCount; j++)
                 {
-                    var row = dataTable.NewRow();
-                    int columnCount = Math.Min(dataTable.Columns.Count, values.Length);
-                    for (int i = 0; i < columnCount; i++)
-                    {
-                        row[i] = values[i];
-                    }
-                    for (int i = columnCount; i < dataTable.Columns.Count; i++)
-                    {
-                        row[i] = DBNull.Value;
-                    }
-                    dataTable.Rows.Add(row);
+                    row[j] = values[j];
                 }
+                for (int j = columnCount; j < dataTable.Columns.Count; j++)
+                {
+                    row[j] = DBNull.Value;
+                }
+                dataTable.Rows.Add(row);
             }
         }
 
         return dataTable;
     }
+
 }
