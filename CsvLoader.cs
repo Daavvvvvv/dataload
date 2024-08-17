@@ -19,7 +19,7 @@ public class CsvLoader
                 string chunk = remainder + new string(buffer, 0, charsRead);
                 var lines = chunk.Split(new[] { '\n' }, StringSplitOptions.None);
 
-                for (int i = 0; i < lines.Length - 1; i++) // Process all complete lines
+                for (int i = 0; i < lines.Length - 1; i++) 
                 {
                     var line = lines[i].Trim();
                     if (string.IsNullOrEmpty(line)) continue;
