@@ -24,7 +24,9 @@ public class SingleCoreLoad : ILoad
             tasks.Add(Task.Run(() =>
             {
                 var threadHandle = GetCurrentThread();
-                var originalAffinity = SetThreadAffinityMask(threadHandle, new IntPtr(0));
+
+                // Establecer afinidad para un solo núcleo (núcleo 0 en este caso)
+                var originalAffinity = SetThreadAffinityMask(threadHandle, new IntPtr(1));
 
                 try
                 {
@@ -41,6 +43,7 @@ public class SingleCoreLoad : ILoad
                 }
                 finally
                 {
+                    // Restaurar la afinidad original
                     SetThreadAffinityMask(threadHandle, originalAffinity);
                 }
             }));

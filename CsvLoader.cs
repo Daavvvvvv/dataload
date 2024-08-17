@@ -25,7 +25,7 @@ public class CsvLoader
                     if (string.IsNullOrEmpty(line)) continue;
 
                     var values = line.Split(',');
-
+                    
                     if (isFirstRow)
                     {
                         foreach (var column in values)
@@ -50,10 +50,10 @@ public class CsvLoader
                     }
                 }
 
-                remainder = lines[^1]; // Last line might be incomplete, save it for the next chunk
+                remainder = lines[^1]; 
             }
 
-            // Process any remaining line
+            // Se procesa cualquier línea restante que no se haya completado
             if (!string.IsNullOrEmpty(remainder))
             {
                 var values = remainder.Trim().Split(',');
