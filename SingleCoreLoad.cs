@@ -4,7 +4,7 @@ using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
+using System.Threading;
 
 public class SingleCoreLoad : ILoad
 {
@@ -12,44 +12,55 @@ public class SingleCoreLoad : ILoad
     static extern IntPtr GetCurrentThread();
 
     [DllImport("kernel32.dll")]
-    static extern IntPtr SetThreadAffinityMask(IntPtr hThread, IntPtr dwThreadAffinityMask);
+    static extern UIntPtr SetThreadAffinityMask(IntPtr hThread, UIntPtr dwThreadAffinityMask);
+
+    [DllImport("kernel32.dll")]
+    static extern uint GetCurrentProcessorNumber();
 
     public async Task<List<DataTable>> LoadFiles(List<FileInfo> csvFiles, CsvLoader loader)
     {
         var dataTables = new List<DataTable>();
-        var tasks = new List<Task>();
+        var threads = new List<Thread>();
+
+        var loadStartTime = DateTime.Now;
+        Console.WriteLine($"Hora de inicio de la carga del primer archivo: {loadStartTime:HH:mm:ss:fff}");
 
         foreach (var file in csvFiles)
         {
-            tasks.Add(Task.Run(() =>
+            var thread = new Thread(() =>
             {
-                var threadHandle = GetCurrentThread();
+                // Establecer afinidad al núcleo 0 (primer núcleo)
+                IntPtr threadHandle = GetCurrentThread();
+                UIntPtr affinityMask = new UIntPtr(1 << 0); // Núcleo 0
+                SetThreadAffinityMask(threadHandle, affinityMask);
 
-                // Establecer afinidad para un solo núcleo (núcleo 0 en este caso)
-                var originalAffinity = SetThreadAffinityMask(threadHandle, new IntPtr(1));
+                var loadStart = Stopwatch.StartNew();
+                var dataTable = loader.LoadCsv(file);
 
-                try
+                lock (dataTables)
                 {
-                    var loadStart = Stopwatch.StartNew();
-                    var dataTable = loader.LoadCsv(file);
-                    loadStart.Stop();
-
-                    lock (dataTables)
-                    {
-                        dataTables.Add(dataTable);
-                    }
-
-                    Console.WriteLine($"Archivo {file.Name} cargado en {loadStart.ElapsedMilliseconds} ms por núcleo {Thread.GetCurrentProcessorId()}");
+                    dataTables.Add(dataTable);
                 }
-                finally
-                {
-                    // Restaurar la afinidad original
-                    SetThreadAffinityMask(threadHandle, originalAffinity);
-                }
-            }));
+
+                loadStart.Stop();
+
+                uint processorNumber = GetCurrentProcessorNumber();
+
+                Console.WriteLine($"Archivo {file.Name} cargado en {loadStart.ElapsedMilliseconds} ms en hilo {Thread.CurrentThread.ManagedThreadId} en núcleo {processorNumber}");
+            });
+
+            threads.Add(thread);
+            thread.Start();
         }
 
-        await Task.WhenAll(tasks);
+        // Esperar a que todos los hilos terminen
+        foreach (var thread in threads)
+        {
+            thread.Join();
+        }
+
+        var loadEndTime = DateTime.Now;
+        Console.WriteLine($"Hora de finalización de la carga del último archivo: {loadEndTime:HH:mm:ss:fff}");
 
         return dataTables;
     }
