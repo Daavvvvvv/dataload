@@ -1,63 +1,38 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
-using System.Threading;
+using System.Threading.Tasks;
 
 public class SingleCoreLoad : ILoad
 {
-    [DllImport("kernel32.dll")]
-    static extern IntPtr GetCurrentThread();
-
-    [DllImport("kernel32.dll")]
-    static extern UIntPtr SetThreadAffinityMask(IntPtr hThread, UIntPtr dwThreadAffinityMask);
-
-    [DllImport("kernel32.dll")]
-    static extern uint GetCurrentProcessorNumber();
-
     public async Task<List<DataTable>> LoadFiles(List<FileInfo> csvFiles, CsvLoader loader)
     {
         var dataTables = new List<DataTable>();
-        var threads = new List<Thread>();
+        var tasks = new List<Task>();
 
         var loadStartTime = DateTime.Now;
         Console.WriteLine($"Hora de inicio de la carga del primer archivo: {loadStartTime:HH:mm:ss:fff}");
 
         foreach (var file in csvFiles)
         {
-            var thread = new Thread(() =>
+            var task = Task.Run(async () =>
             {
-                // Establecer afinidad al núcleo 0 (primer núcleo)
-                IntPtr threadHandle = GetCurrentThread();
-                UIntPtr affinityMask = new UIntPtr(1 << 0); // Núcleo 0
-                SetThreadAffinityMask(threadHandle, affinityMask);
+                // Establecer afinidad al núcleo 0
+                System.Diagnostics.Process.GetCurrentProcess().ProcessorAffinity = (IntPtr)1;
 
-                var loadStart = Stopwatch.StartNew();
-                var dataTable = loader.LoadCsv(file);
-
+                var dataTable = await loader.LoadCsvInPartsAsync(file);
                 lock (dataTables)
                 {
                     dataTables.Add(dataTable);
                 }
-
-                loadStart.Stop();
-
-                uint processorNumber = GetCurrentProcessorNumber();
-
-                Console.WriteLine($"Archivo {file.Name} cargado en {loadStart.ElapsedMilliseconds} ms en hilo {Thread.CurrentThread.ManagedThreadId} en núcleo {processorNumber}");
+                Console.WriteLine($"Archivo {file.Name} cargado por el hilo {System.Threading.Thread.CurrentThread.ManagedThreadId}");
             });
 
-            threads.Add(thread);
-            thread.Start();
+            tasks.Add(task);
         }
 
-        // Esperar a que todos los hilos terminen
-        foreach (var thread in threads)
-        {
-            thread.Join();
-        }
+        await Task.WhenAll(tasks);
 
         var loadEndTime = DateTime.Now;
         Console.WriteLine($"Hora de finalización de la carga del último archivo: {loadEndTime:HH:mm:ss:fff}");

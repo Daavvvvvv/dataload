@@ -1,55 +1,31 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 
 public class DataLoader
 {
-    private string folderPath;
-    private CsvLoader csvLoader;
-    private ILoad loadInterface;
+    private readonly string folder;
+    private readonly ILoad loadStrategy;
 
-    public DataLoader(string folderPath, ILoad loadStrategy)
+    public DataLoader(string folder, ILoad loadStrategy)
     {
-        this.folderPath = folderPath;
-        this.csvLoader = new CsvLoader();
-        this.loadInterface = loadStrategy;
+        this.folder = folder;
+        this.loadStrategy = loadStrategy;
     }
 
     public async Task LoadFiles()
     {
-        var csvFiles = GetCsvFiles();
-        var startTime = DateTime.Now;
+        var csvFiles = new DirectoryInfo(folder).GetFiles("*.csv").ToList();
 
-        Console.WriteLine($"Hora de inicio del programa: {startTime:HH:mm:ss:FFF}");
-        var stopwatch = Stopwatch.StartNew();
-
-        try
+        if (csvFiles.Count == 0)
         {
-            var firstFileLoadStartTime = DateTime.Now;
-            Console.WriteLine($"Hora de inicio de la carga del primer archivo: {firstFileLoadStartTime:HH:mm:ss:FFF}");
-
-            var dataTables = await loadInterface.LoadFiles(csvFiles, csvLoader);
-
-            var lastFileLoadEndTime = DateTime.Now;
-            Console.WriteLine($"Hora de finalización de la carga del último archivo: {lastFileLoadEndTime:HH:mm:ss:FFF}");
-
-            stopwatch.Stop();
-            var totalDuration = stopwatch.Elapsed;
-            Console.WriteLine($"Tiempo total del proceso: {totalDuration.TotalMilliseconds} ms");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error durante la carga de archivos: {ex.Message}");
-            throw;
-        }
-    }
-
-    private List<FileInfo> GetCsvFiles()
-    {
-        if (!Directory.Exists(folderPath))
-        {
-            throw new DirectoryNotFoundException($"La carpeta {folderPath} no se encontró.");
+            Console.WriteLine("No se encontraron archivos CSV en la carpeta especificada.");
+            return;
         }
 
-        var directoryInfo = new DirectoryInfo(folderPath);
-        return directoryInfo.GetFiles("*.csv").ToList();
+        var loader = new CsvLoader();
+        await loadStrategy.LoadFiles(csvFiles, loader);
     }
 }
