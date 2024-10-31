@@ -35,4 +35,9 @@ public class DataAnalyzer
     {
         videos.AddRange(videoDataList);
     }
+
+    public List<VideoData> GetVideos()
+    {
+        return videos;
+    }
 }

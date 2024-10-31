@@ -34,8 +34,43 @@ public class SingleCoreLoad : ILoad
 
         await Task.WhenAll(tasks);
 
+        // Parte adicional después de la carga en SingleCoreLoad para hacer el análisis de popularidad
+        var allVideos = new List<VideoData>();
+        var analyzer = new DataAnalyzer();
+
+        foreach (var table in dataTables)
+        {
+            var region = Path.GetFileNameWithoutExtension(table.TableName);
+            analyzer.AddDataTable(table, region);
+            allVideos.AddRange(analyzer.GetVideos());
+        }
+
+        // Video más y menos popular globalmente
+        var mostPopular = analyzer.GetMostPopularVideo();
+        var leastPopular = analyzer.GetLeastPopularVideo();
+
+        Console.WriteLine("\nVideos más y menos populares globalmente:");
+        Console.WriteLine($"Video más popular: {mostPopular?.Title} con {mostPopular?.Views} vistas.");
+        Console.WriteLine($"Video menos popular: {leastPopular?.Title} con {leastPopular?.Views} vistas.");
+
+        // Video más popular por región
+        Console.WriteLine("\nVideos más populares por región:");
+        var groupedByRegion = allVideos.GroupBy(v => v.Region);
+        foreach (var group in groupedByRegion)
+        {
+            var popularVideo = group.OrderByDescending(v => v.Views).FirstOrDefault();
+            if (popularVideo != null)
+            {
+                Console.WriteLine($"Región: {popularVideo.Region}, Video más popular: {popularVideo.Title} con {popularVideo.Views} vistas.");
+            }
+        }
+
+
         var loadEndTime = DateTime.Now;
         Console.WriteLine($"Hora de finalización de la carga del último archivo: {loadEndTime:HH:mm:ss:fff}");
+        var totalLoadDuration = loadEndTime - loadStartTime;
+        Console.WriteLine($"\nDuración total de la carga de archivos: {totalLoadDuration:mm\\:ss}");
+
 
         return dataTables;
     }
