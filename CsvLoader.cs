@@ -8,11 +8,11 @@ using System.Threading.Tasks;
 
 public class CsvLoader
 {
-    // Método para carga asíncrona en partes (usado en SingleCoreLoad y MultiCoreLoad)
+   
     public async Task<DataTable> LoadCsvInPartsAsync(FileInfo file)
     {
         var dataTable = new DataTable(file.Name);
-        var semaphore = new SemaphoreSlim(2); // Limitar el número de tareas concurrentes a 2
+        var semaphore = new SemaphoreSlim(2); 
 
         using (var fileStream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read))
         using (var reader = new StreamReader(fileStream))
@@ -63,7 +63,7 @@ public class CsvLoader
                                 if (values.Length != dataTable.Columns.Count)
                                 {
                                     Array.Resize(ref values, dataTable.Columns.Count);
-                                    continue; // Omitir esta fila
+                                    continue;
                                 }
 
                                 var row = dataTable.NewRow();
@@ -189,11 +189,11 @@ public class CsvLoader
                     if (i + 1 < line.Length && line[i + 1] == '"')
                     {
                         currentField.Append('"');
-                        i++; // Saltar la segunda comilla escapada
+                        i++; 
                     }
                     else
                     {
-                        inQuotes = false; // Fin de la sección entre comillas
+                        inQuotes = false; 
                     }
                 }
                 else
@@ -219,8 +219,6 @@ public class CsvLoader
                 }
             }
         }
-
-        // Agregar el último campo
         fields.Add(currentField.ToString());
 
         return fields.ToArray();
