@@ -12,12 +12,11 @@ public class CsvLoader
     public async Task<DataTable> LoadCsvInPartsAsync(FileInfo file)
     {
         var dataTable = new DataTable(file.Name);
-        var semaphore = new SemaphoreSlim(Environment.ProcessorCount); // Limitar el número de tareas concurrentes
+        var semaphore = new SemaphoreSlim(2); // Limitar el número de tareas concurrentes a 2
 
         using (var fileStream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read))
         using (var reader = new StreamReader(fileStream))
         {
-            // Leer la primera línea (encabezado)
             string headerLine = await reader.ReadLineAsync();
             if (string.IsNullOrEmpty(headerLine))
             {
@@ -40,10 +39,7 @@ public class CsvLoader
                 string chunk = remainder + new string(buffer, 0, charsRead);
                 var lines = chunk.Split(new[] { '\n' }, StringSplitOptions.None);
 
-                // Guardar el último elemento como posible línea incompleta
                 remainder = lines[^1];
-
-                // Procesar todas las líneas completas en una tarea separada
                 string[] linesToProcess = lines[..^1];
 
                 if (linesToProcess.Length > 0)
@@ -63,13 +59,26 @@ public class CsvLoader
 
                                 var values = ParseCsvLine(trimmedLine);
 
-                                var row = dataTable.NewRow();
-                                int columnCount = Math.Min(dataTable.Columns.Count, values.Length);
-                                for (int j = 0; j < columnCount; j++)
+                                // Verificación adicional de longitud de fila
+                                if (values.Length != dataTable.Columns.Count)
                                 {
-                                    row[j] = values[j];
+                                    Array.Resize(ref values, dataTable.Columns.Count);
+                                    continue; // Omitir esta fila
                                 }
-                                localRows.Add(row);
+
+                                var row = dataTable.NewRow();
+                                try
+                                {
+                                    for (int j = 0; j < dataTable.Columns.Count; j++)
+                                    {
+                                        row[j] = string.IsNullOrEmpty(values[j]) ? DBNull.Value : values[j];
+                                    }
+                                    localRows.Add(row);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"Error al agregar la fila: {ex.Message}. Fila omitida: {trimmedLine}");
+                                }
                             }
 
                             if (localRows.Count > 0)
@@ -93,17 +102,24 @@ public class CsvLoader
                 }
             }
 
-            // Procesar cualquier línea restante
             if (!string.IsNullOrEmpty(remainder))
             {
                 var values = ParseCsvLine(remainder.Trim());
-                var row = dataTable.NewRow();
-                int columnCount = Math.Min(dataTable.Columns.Count, values.Length);
-                for (int j = 0; j < columnCount; j++)
+
+                // Verificación adicional para la última fila incompleta
+                if (values.Length == dataTable.Columns.Count)
                 {
-                    row[j] = values[j];
+                    var row = dataTable.NewRow();
+                    for (int j = 0; j < dataTable.Columns.Count; j++)
+                    {
+                        row[j] = string.IsNullOrEmpty(values[j]) ? DBNull.Value : values[j];
+                    }
+                    dataTable.Rows.Add(row);
                 }
-                dataTable.Rows.Add(row);
+                else
+                {
+                    Console.WriteLine($"Advertencia: La última fila incompleta tiene {values.Length} valores, pero se esperaban {dataTable.Columns.Count}. Fila omitida: {remainder}");
+                }
             }
 
             await Task.WhenAll(tasks);
@@ -111,6 +127,7 @@ public class CsvLoader
 
         return dataTable;
     }
+
 
     // Método para carga secuencial (usado en SequentialLoad)
     public DataTable LoadCsv(FileInfo file)
@@ -157,86 +174,56 @@ public class CsvLoader
             return Array.Empty<string>();
 
         var fields = new List<string>();
-        int i = 0;
-        int length = line.Length;
+        var currentField = new StringBuilder();
+        bool inQuotes = false;
 
-        while (i < length)
+        for (int i = 0; i < line.Length; i++)
         {
-            StringBuilder field = new StringBuilder();
-            bool inQuotes = false;
-            bool fieldStarted = false;
+            char c = line[i];
 
-            while (i < length)
+            if (inQuotes)
             {
-                char c = line[i];
-
-                if (!fieldStarted)
+                if (c == '"')
                 {
-                    if (c == '"')
+                    // Verificar si la siguiente es otra comilla (comilla escapada)
+                    if (i + 1 < line.Length && line[i + 1] == '"')
                     {
-                        inQuotes = true;
-                        fieldStarted = true;
-                        i++; // Saltar la comilla inicial
-                    }
-                    else if (c == ',')
-                    {
-                        // Campo vacío
-                        fields.Add(string.Empty);
-                        i++; // Saltar la coma
-                        fieldStarted = false;
-                        break;
+                        currentField.Append('"');
+                        i++; // Saltar la segunda comilla escapada
                     }
                     else
                     {
-                        fieldStarted = true;
-                        field.Append(c);
-                        i++;
+                        inQuotes = false; // Fin de la sección entre comillas
                     }
                 }
                 else
                 {
-                    if (inQuotes)
-                    {
-                        if (c == '"')
-                        {
-                            if (i + 1 < length && line[i + 1] == '"')
-                            {
-                                // Comilla escapada
-                                field.Append('"');
-                                i += 2;
-                            }
-                            else
-                            {
-                                // Fin del campo entrecomillado
-                                inQuotes = false;
-                                i++; // Saltar la comilla de cierre
-                            }
-                        }
-                        else
-                        {
-                            field.Append(c);
-                            i++;
-                        }
-                    }
-                    else
-                    {
-                        if (c == ',')
-                        {
-                            i++; // Saltar la coma
-                            break; // Fin del campo
-                        }
-                        else
-                        {
-                            field.Append(c);
-                            i++;
-                        }
-                    }
+                    currentField.Append(c);
                 }
             }
-
-            fields.Add(field.ToString());
+            else
+            {
+                if (c == '"')
+                {
+                    inQuotes = true; // Comienzo de una sección entre comillas
+                }
+                else if (c == ',')
+                {
+                    // Fin del campo
+                    fields.Add(currentField.ToString());
+                    currentField.Clear();
+                }
+                else
+                {
+                    currentField.Append(c);
+                }
+            }
         }
+
+        // Agregar el último campo
+        fields.Add(currentField.ToString());
 
         return fields.ToArray();
     }
+
 }
